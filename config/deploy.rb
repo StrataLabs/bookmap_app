@@ -1,36 +1,54 @@
 require 'bundler/capistrano'
 
 set :application, "bookmap"
-set :repository,  "git://github.com/akil-rails/bookmap_app.git"
-
+set :repository,  "git://github.com/awinabi/bookmap_app.git"
+set :deploy_via, :remote_cache
 set :scm, :git
 
-set :deploy_to, "/disk1/bookmap"
-set :user, 'rails'
+
 set :scm_username, 'akil_rails'
 set :use_sudo, false
+ssh_options[:keys] = [File.join(ENV["HOME"], ".ssh", "id_rsa")] 
 
-# Or: `accurev`, `bzr`, `cvs`, `darcs`, `git`, `mercurial`, `perforce`, `subversion` or `none`
-
-role :web, "74.86.131.195"                          # Your HTTP server, Apache/etc
-role :app, "74.86.131.195"                          # This may be the same as your `Web` server
-role :db,  "74.86.131.195", :primary => true # This is where Rails migrations will run
-# role :db,  "74.86.131.195"
-
-
-# If you are using Passenger mod_rails uncomment this:
-# if you're still using the script/reapear helper you will need
-# these http://github.com/rails/irs_process_scripts
-
-namespace :deploy do
-  task :copy_database_configuration do 
-    production_db_config = "/disk1/bookmap/database.yml" 
-    run "cp #{production_db_config} #{release_path}/config/database.yml"
+def legacy_production name
+  task name do
+    set :branch, "master"
+    set :default_environment, {  "LD_LIBRARY_PATH" => "/opt/oracle/instantclient_10_2", "TNS_ADMIN" => "/opt/oracle/network/admin" }
+    role :web, "74.86.131.195"                          # Your HTTP server, Apache/etc
+    role :app, "74.86.131.195"                          # This may be the same as your `Web` server
+    role :db,  "74.86.131.195", :primary => true        # This is where Rails migrations will run
+    set :user, 'rails'
+    yield
   end
-  after "deploy:update_code", "deploy:copy_database_configuration"
 end
 
+def aws name
+  task name, :on_error => :continue do
+    set :branch, "master"
+    set :default_environment, { "PATH" => "/rails/common/ruby-1.9.2-p290/bin:$PATH", "LD_LIBRARY_PATH" => "/rails/common/oracle/instantclient_11_2", "TNS_ADMIN" => "/rails/common/oracle/network/admin" }
+    role :web, "107.21.238.175"                          # Your HTTP server, Apache/etc
+    role :app, "107.21.238.175"                          # This may be the same as your `Web` server
+    role :db,  "107.21.238.175", :primary => true        # This is where Rails migrations will run
+    set :user, 'rails'
+    yield
+  end
+end
+
+aws :ec2_production do
+  set :deploy_to, "/rails/apps/bookmap"
+end
+
+legacy_production :production do
+  set :deploy_to, "/disk1/bookmap"
+end
+
+# after "deploy", "deploy:migrate"
+
 namespace :deploy do
+  # after "deploy:update_code" do
+  #   run "cp #{deploy_to}/database.yml #{release_path}/config/database.yml"
+  # end
+
   task :start do ; end
   task :stop do ; end
   task :restart, :roles => :app, :except => { :no_release => true } do
