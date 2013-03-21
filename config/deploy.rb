@@ -1,7 +1,7 @@
 require 'bundler/capistrano'
 
 set :application, "bookmap"
-set :repository,  "git://github.com/awinabi/bookmap_app.git"
+set :repository,  "git://github.com/StrataLabs/bookmap_app.git"
 set :deploy_via, :remote_cache
 set :scm, :git
 
